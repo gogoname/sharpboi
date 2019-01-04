@@ -1,3 +1,2 @@
 # SharpBoi
-
-A Gameboy emulator written in C#
+A Gameboy Emulator Written in C#
