@@ -32,6 +32,7 @@ namespace SharpBoi
         bool isStopped;
         bool isHalted;
         short addr;
+        byte tmp;
         public CPU(RAM ram)
         {
             this.ram = ram;
@@ -51,7 +52,8 @@ namespace SharpBoi
             SP = new Register16(0xFFFE);
             isStopped = false;
             isHalted = false;
-            short addr = 0;
+            addr = 0;
+            tmp = 0;
         }
         public void ParseInstruction(byte opcode, RAM ram)
         {
@@ -670,6 +672,153 @@ namespace SharpBoi
                         AF.high.value += Convert.ToByte(ram.Read(HL.value) + Convert.ToByte(AF.low.GetCertainBit(4)));
                         AF.low.SetCertainBit(4, AF.high.value == 255);
                         AF.Sync();
+                        break;
+                    case 0x90: //SUB B
+                        AF.low.SetCertainBit(5, AF.high.low > BC.high.low);
+                        AF.low.SetCertainBit(4, AF.high.high > BC.high.high);
+                        AF.high.value -= BC.high.value;
+                        AF.low.SetCertainBit(7, AF.high.value == 0);
+                        AF.low.SetCertainBit(6, true);
+                        AF.Sync();
+                        break;
+                    case 0x91: //SUB C
+                        AF.low.SetCertainBit(5, AF.high.low > BC.low.low);
+                        AF.low.SetCertainBit(4, AF.high.high > BC.low.high);
+                        AF.high.value -= BC.low.value;
+                        AF.low.SetCertainBit(7, AF.high.value == 0);
+                        AF.low.SetCertainBit(6, true);
+                        AF.Sync();
+                        break;
+                    case 0x92: //SUB D
+                        AF.low.SetCertainBit(5, AF.high.low > DE.high.low);
+                        AF.low.SetCertainBit(4, AF.high.high > DE.high.high);
+                        AF.high.value -= DE.high.value;
+                        AF.low.SetCertainBit(7, AF.high.value == 0);
+                        AF.low.SetCertainBit(6, true);
+                        AF.Sync();
+                        break;
+                    case 0x93: //SUB E
+                        AF.low.SetCertainBit(5, AF.high.low > DE.low.low);
+                        AF.low.SetCertainBit(4, AF.high.high > DE.low.high);
+                        AF.high.value -= DE.low.value;
+                        AF.low.SetCertainBit(7, AF.high.value == 0);
+                        AF.low.SetCertainBit(6, true);
+                        AF.Sync();
+                        break;
+                    case 0x94: //SUB H
+                        AF.low.SetCertainBit(5, AF.high.low > HL.high.low);
+                        AF.low.SetCertainBit(4, AF.high.high > HL.high.high);
+                        AF.high.value -= HL.high.value;
+                        AF.low.SetCertainBit(7, AF.high.value == 0);
+                        AF.low.SetCertainBit(6, true);
+                        AF.Sync();
+                        break;
+                    case 0x95: //SUB L
+                        AF.low.SetCertainBit(5, AF.high.low > HL.low.low);
+                        AF.low.SetCertainBit(4, AF.high.high > HL.low.high);
+                        AF.high.value -= HL.low.value;
+                        AF.low.SetCertainBit(7, AF.high.value == 0);
+                        AF.low.SetCertainBit(6, true);
+                        AF.Sync();
+                        break;
+                    case 0x96: //SUB [HL]
+                        AF.low.SetCertainBit(5, AF.high.low > (ram.Read(HL.value) & 0x0F));
+                        AF.low.SetCertainBit(4, AF.high.high > (ram.Read(HL.value) >> 4 & 0x0F));
+                        AF.high.value -= ram.Read(HL.value);
+                        AF.low.SetCertainBit(7, AF.high.value == 0);
+                        AF.low.SetCertainBit(6, true);
+                        AF.Sync();
+                        break;
+                    case 0x97: //SUB A
+                        AF.low.SetCertainBit(5, false);
+                        AF.low.SetCertainBit(4, false);
+                        AF.high.value = 0;
+                        AF.low.SetCertainBit(7, true);
+                        AF.low.SetCertainBit(6, true);
+                        AF.Sync();
+                        break;
+                    case 0x98: //SBC A, B
+                        tmp = BC.high.value;
+                        BC.high.value += Convert.ToByte(AF.low.GetCertainBit(4));
+                        AF.low.SetCertainBit(5, AF.high.low > BC.high.low);
+                        AF.low.SetCertainBit(4, AF.high.high > BC.high.high);
+                        AF.high.value -= BC.high.value;
+                        AF.low.SetCertainBit(7, AF.high.value == 0);
+                        AF.low.SetCertainBit(6, true);
+                        AF.Sync();
+                        BC.high.value = tmp;
+                        BC.Sync();
+                        break;
+                    case 0x99: //SBC A, C
+                        tmp = BC.low.value;
+                        BC.low.value += Convert.ToByte(AF.low.GetCertainBit(4));
+                        AF.low.SetCertainBit(5, AF.high.low > BC.low.low);
+                        AF.low.SetCertainBit(4, AF.high.high > BC.low.high);
+                        AF.high.value -= BC.low.value;
+                        AF.low.SetCertainBit(7, AF.high.value == 0);
+                        AF.low.SetCertainBit(6, true);
+                        AF.Sync();
+                        BC.low.value = tmp;
+                        BC.Sync();
+                        break;
+                    case 0x9A: //SBC A, D
+                        tmp = DE.high.value;
+                        DE.high.value += Convert.ToByte(AF.low.GetCertainBit(4));
+                        AF.low.SetCertainBit(5, AF.high.low > DE.high.low);
+                        AF.low.SetCertainBit(4, AF.high.high > DE.high.high);
+                        AF.high.value -= DE.high.value;
+                        AF.low.SetCertainBit(7, AF.high.value == 0);
+                        AF.low.SetCertainBit(6, true);
+                        AF.Sync();
+                        DE.high.value = tmp;
+                        DE.Sync();
+                        break;
+                    case 0x9B: //SBC A, E
+                        tmp = DE.low.value;
+                        DE.low.value += Convert.ToByte(AF.low.GetCertainBit(4));
+                        AF.low.SetCertainBit(5, AF.high.low > DE.low.low);
+                        AF.low.SetCertainBit(4, AF.high.high > DE.low.high);
+                        AF.high.value -= DE.low.value;
+                        AF.low.SetCertainBit(7, AF.high.value == 0);
+                        AF.low.SetCertainBit(6, true);
+                        AF.Sync();
+                        DE.low.value = tmp;
+                        DE.Sync();
+                        break;
+                    case 0x9C: //SBC A, H
+                        tmp = HL.high.value;
+                        HL.high.value += Convert.ToByte(AF.low.GetCertainBit(4));
+                        AF.low.SetCertainBit(5, AF.high.low > HL.high.low);
+                        AF.low.SetCertainBit(4, AF.high.high > HL.high.high);
+                        AF.high.value -= HL.high.value;
+                        AF.low.SetCertainBit(7, AF.high.value == 0);
+                        AF.low.SetCertainBit(6, true);
+                        AF.Sync();
+                        HL.high.value = tmp;
+                        HL.Sync();
+                        break;
+                    case 0x9D: //SBC A, L
+                        tmp = HL.low.value;
+                        HL.low.value += Convert.ToByte(AF.low.GetCertainBit(4));
+                        AF.low.SetCertainBit(5, AF.high.low > HL.low.low);
+                        AF.low.SetCertainBit(4, AF.high.high > HL.low.high);
+                        AF.high.value -= HL.low.value;
+                        AF.low.SetCertainBit(7, AF.high.value == 0);
+                        AF.low.SetCertainBit(6, true);
+                        AF.Sync();
+                        HL.low.value = tmp;
+                        HL.Sync();
+                        break;
+                    case 0x9E: //SBC A, [HL]
+                        tmp = ram.Read(HL.value);
+                        ram.Edit(HL.value, Convert.ToByte(AF.low.GetCertainBit(4)));
+                        AF.low.SetCertainBit(5, AF.high.low > (ram.Read(HL.value) & 0x0F));
+                        AF.low.SetCertainBit(4, AF.high.high > (ram.Read(HL.value) >> 4 & 0x0F));
+                        AF.high.value -= ram.Read(HL.value);
+                        AF.low.SetCertainBit(7, AF.high.value == 0);
+                        AF.low.SetCertainBit(6, true);
+                        AF.Sync();
+                        ram.Write(tmp, HL.value);
                         break;
                 }
                 PC.value++;

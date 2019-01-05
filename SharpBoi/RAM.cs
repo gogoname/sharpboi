@@ -13,7 +13,24 @@ namespace SharpBoi
         {
             try
             {
-                ram[location] = data;
+                if (location > 0xE000 && location < 0xFE00) 
+                {
+                    ram[location] = data;
+                    ram[location - 0x2000] = data;
+                }
+                else if (location > 0xC000 && location < 0xDE00)
+                {
+                    ram[location] = data;
+                    ram[location + 0x2000] = data;
+                }
+                /*The conditions above are for echo memory:
+                 [E000] - [FE00]
+                 ===============
+                 [C000] - [DE00]
+                 Changes in these ranges are copied to their counterparts
+                 */
+                else
+                    ram[location] = data;
                 return true;
             }
             catch (Exception)
@@ -27,7 +44,7 @@ namespace SharpBoi
             {
                 for (int i=0; i < data.Length; i++)
                 {
-                    ram[initLocation + i] = data[i];
+                    Write(data[i], initLocation + i);
                 }
                 return true;
             }
