@@ -34,8 +34,8 @@ namespace SharpBoi
                     string filePath = dialog.FileName;
                     RAM ram = new RAM();
                     CPU cpu = new CPU(ram);
-                    cpu.ParseInstruction(0x03, ram);
-                    ParseFile(filePath);
+                    byte[] instructions = ParseFile(filePath);
+                    cpu.Start(instructions);
                 }
                 else
                 {

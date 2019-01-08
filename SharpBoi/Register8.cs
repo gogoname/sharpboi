@@ -20,15 +20,14 @@ namespace SharpBoi
         }
         public bool GetCertainBit(int bit)
         {
-            return new BitArray(value).Get(bit);
+            return (value & (1 << bit - 1)) != 0;
         }
         public void SetCertainBit(int bit, bool value)
         {
-            BitArray tmp = new BitArray(this.value);
-            tmp.Set(bit, value);
-            byte[] tmpArr = new byte[1];
-            tmp.CopyTo(tmpArr, 0);
-            this.value = tmpArr[0];
+            if (value)
+                this.value |= Convert.ToByte(1 << bit);
+            else
+                this.value ^= Convert.ToByte(1 << bit);
         }
         public void Sync()
         {

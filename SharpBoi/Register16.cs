@@ -19,8 +19,11 @@ namespace SharpBoi
         }
         public Register16(ushort value)
         {
+            low = new Register8(0);
+            high = new Register8(0);
             low.value = Convert.ToByte(value & 0x00FF);
             high.value = Convert.ToByte(value >> 8);
+            this.value = value;
         }
         public void Sync()
         {
