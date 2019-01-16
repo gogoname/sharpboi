@@ -8,6 +8,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Reflection;
+using System.Reflection.Emit;
 
 namespace SharpBoi
 {
@@ -32,7 +33,9 @@ namespace SharpBoi
         bool isStopped;
         bool isHalted;
         bool isIntsEnabled;
-        short addr;
+        bool isDI;
+        bool isEI;
+        sbyte addr;
         byte tmp;
         public CPU(RAM ram)
         {
@@ -54,6 +57,8 @@ namespace SharpBoi
             isStopped = false;
             isHalted = false;
             isIntsEnabled = false;
+            isDI = false;
+            isEI = false;
             addr = 0;
             tmp = 0;
         }
@@ -64,6 +69,17 @@ namespace SharpBoi
             ram.Write(opcodes, 0);
             while (true)
             {
+                if (isDI)
+                {
+                    isIntsEnabled = false;
+                    isDI = false;
+                }
+
+                if (isEI)
+                {
+                    isIntsEnabled = true;
+                    isEI = false;
+                }
                 if (!(isHalted | isStopped))
                 {
                     switch (ram.Read(PC.value))
@@ -95,7 +111,7 @@ namespace SharpBoi
                             BC.Sync();
                             break;
                         case 0x07: //RLCA
-                            RLCA(4);
+                            RLCH(ref AF);
                             break;
                         case 0x08: //LD [a16], SP
                             SP.value = ram.Read(
@@ -156,7 +172,7 @@ namespace SharpBoi
                             RLA(4);
                             break;
                         case 0x18: //JR r8
-                            addr = ram.Read(PC.value + 1);
+                            addr = (sbyte) ram.Read(PC.value + 1);
                             PC.value++;
                             if (addr > 0)
                                 PC.value += Convert.ToUInt16(addr - 1);
@@ -190,7 +206,7 @@ namespace SharpBoi
                             RRA(4);
                             break;
                         case 0x20: //JR NZ, r8
-                            addr = ram.Read(PC.value + 1);
+                            addr = (sbyte) ram.Read(PC.value + 1);
                             PC.value++;
                             if (!AF.low.GetCertainBit(7))
                             {
@@ -230,7 +246,7 @@ namespace SharpBoi
                             DAA(4);
                             break;
                         case 0x28: //JR Z, r8
-                            addr = ram.Read(PC.value + 1);
+                            addr = (sbyte) ram.Read(PC.value + 1);
                             PC.value++;
                             if (AF.low.GetCertainBit(7))
                             {
@@ -270,7 +286,7 @@ namespace SharpBoi
                             AF.Sync();
                             break;
                         case 0x30: //JR NC, r8
-                            addr = ram.Read(PC.value + 1);
+                            addr = (sbyte) ram.Read(PC.value + 1);
                             PC.value++;
                             if (!AF.low.GetCertainBit(4))
                             {
@@ -308,7 +324,7 @@ namespace SharpBoi
                             AF.low.SetCertainBit(4, true);
                             break;
                         case 0x38: //JR C, r8
-                            addr = ram.Read(PC.value + 1);
+                            addr = (sbyte) ram.Read(PC.value + 1);
                             PC.value++;
                             if (AF.low.GetCertainBit(4))
                             {
@@ -1137,8 +1153,7 @@ namespace SharpBoi
                             AF.Sync();
                             break;
                         case 0xC7: //RST 00H
-                            PC.value = 0x0;
-                            PC.value--;
+                            PC.value = ushort.MaxValue;
                             break;
                         case 0xC8: //RET Z
                             if (AF.low.GetCertainBit(7))
@@ -1189,8 +1204,7 @@ namespace SharpBoi
                             AF.Sync();
                             break;
                         case 0xCF: //RST 08H
-                            PC.value = 0x8;
-                            PC.value--;
+                            PC.value = 0x8 - 1;
                             break;
                         case 0xD0: //RET NC
                             if (!AF.low.GetCertainBit(4))
@@ -1236,8 +1250,7 @@ namespace SharpBoi
                             AF.Sync();
                             break;
                         case 0xD7: //RST 10H
-                            PC.value = 0x10;
-                            PC.value--;
+                            PC.value = 0x10 - 1;
                             break;
                         case 0xD8: //RET C
                             if (AF.low.GetCertainBit(4))
@@ -1286,21 +1299,153 @@ namespace SharpBoi
                         case 0xE2: //LD [C], A
                             ram.Write(AF.high.value, ram.Read(0xFF00 + BC.low.value));
                             break;
+                        case 0xE5: //PUSH HL
+                            st.Push(HL.high.value);
+                            st.Push(HL.low.value);
+                            SP.value -= 2;
+                            break;
+                        case 0xE6: //AND d8
+                            AF.high.value &= ram.Read(PC.value + 1);
+                            AF.low.SetCertainBit(7, AF.high.value == 0);
+                            AF.low.SetCertainBit(6, false);
+                            AF.low.SetCertainBit(5, true);
+                            AF.Sync();
+                            AF.low.SetCertainBit(4, false);
+                            PC.value++;
+                            break;
+                        case 0xE7: //RST 20H
+                            PC.value = 0x20 - 1;
+                            break;
+                        case 0xE8: //ADD SP, r8
+                            addr = (sbyte) ram.Read(PC.value + 1);
+                            AF.low.SetCertainBit(7, SP.value == 0);
+                            AF.low.SetCertainBit(6, false);
+                            AF.low.SetCertainBit(5, AF.high.low == 15);
+                            AF.low.SetCertainBit(4, SP.value == ushort.MaxValue);
+                            if (addr > 0)
+                                SP.value += ram.Read(PC.value + 1);
+                            else
+                                SP.value -= ram.Read(PC.value + 1);
+                            PC.value++;
+                            AF.Sync();
+                            break;
+                        case 0xE9: //JP [HL]
+                            PC.value = ram.Read(HL.value);
+                            PC.value--;
+                            break;
+                        case 0xEA: //LD [a16], A
+                            ram.Write(AF.high.value, ram.Read(PC.value + 1));
+                            PC.value++;
+                            break;
+                        case 0xEE: //XOR d8
+                            AF.high.value ^= ram.Read(PC.value + 1);
+                            AF.low.SetCertainBit(7, AF.high.value == 0);
+                            AF.low.SetCertainBit(6, false);
+                            AF.low.SetCertainBit(5, false);
+                            AF.low.SetCertainBit(4, false);
+                            AF.Sync();
+                            PC.value++;
+                            break;
+                        case 0xEF: //RST 28H
+                            PC.value = 0x28 - 1;
+                            break;
+                        case 0xF0: //LDH A, [a8]
+                            AF.high.value = ram.Read(0xFF00 + ram.Read(PC.value + 1));
+                            PC.value++;
+                            AF.Sync();
+                            break;
+                        case 0xF1: //POP AF
+                            AF.value = Convert.ToUInt16(new byte[] { st.Pop(), st.Pop() });
+                            SP.value += 2;
+                            break;
+                        case 0xF2: //LD A, [C]
+                            AF.high.value = ram.Read(0xFF00 + BC.low.value);
+                            AF.Sync();
+                            break;
+                        case 0xF3: //DI
+                            isDI = true;
+                            isEI = false;
+                            break;
+                        case 0xF5: //PUSH AF
+                            st.Push(AF.high.value);
+                            st.Push(AF.low.value);
+                            SP.value -= 2;
+                            break;
+                        case 0xF6: //OR d8
+                            AF.high.value |= ram.Read(PC.value + 1);
+                            AF.low.SetCertainBit(7, AF.high.value == 0);
+                            AF.low.SetCertainBit(6, false);
+                            AF.low.SetCertainBit(5, false);
+                            AF.low.SetCertainBit(4, false);
+                            AF.Sync();
+                            PC.value++;
+                            break;
+                        case 0xF7: //RST 30H
+                            PC.value = 0x30 - 1;
+                            break;
+                        case 0xF8: //LD HL, SP + r8
+                            addr = (sbyte) ram.Read(PC.value + 1);
+                            AF.low.SetCertainBit(7, false);
+                            AF.low.SetCertainBit(6, false);
+                            AF.low.SetCertainBit(5, HL.low.value == 255);
+                            AF.low.SetCertainBit(4, HL.value == ushort.MaxValue);
+                            if (addr > 0)
+                                HL.value = Convert.ToUInt16(SP.value + addr);
+                            else
+                                HL.value = Convert.ToUInt16(SP.value - addr);
+                            AF.Sync();
+                            break;
+                        case 0xF9: //LD SP, HL
+                            SP.value = HL.value;
+                            break;
+                        case 0xFA: //LD A, [a16]
+                            AF.high.value = ram.Read(BitConverter.ToUInt16(new byte[] {ram.Read(PC.value + 1), ram.Read(PC.value + 2)}, 0));
+                            PC.value += 2;
+                            AF.Sync();
+                            break;
+                        case 0xFB: //EI
+                            isEI = true;
+                            isDI = false;
+                            break;
+                        case 0xFE: //CP d8
+                            AF.low.SetCertainBit(5, AF.high.low > Convert.ToByte((ram.Read(PC.value + 1)) & 0x0F));
+                            AF.low.SetCertainBit(4, AF.high.high > Convert.ToByte((ram.Read(PC.value + 1) >> 4) & 0x0F));
+                            AF.low.SetCertainBit(7, AF.high.value == ram.Read(PC.value + 1));
+                            AF.low.SetCertainBit(6, true);
+                            AF.Sync();
+                            PC.value++;
+                            break;
+                        case 0xFF: //RST 38H
+                            PC.value = 0x38 - 1;
+                            break;
                     }
                     counter++;
                 }
             }
         }
 
-        public void RLCA(int duartion)
+        public void RLCH(ref Register16 reg)
         {
-            AF.low.SetCertainBit(4, AF.high.GetCertainBit(7)); // Set carry flag to the left most bit
-            AF.high.value = Convert.ToByte((AF.high.value << 1) & 0xFF); // Shift left
-            AF.high.SetCertainBit(7, AF.low.GetCertainBit(4)); // Set left most bit to the carry flag
-            AF.low.SetCertainBit(7, AF.high.value != 0); // Activate zero flag if A is 0
+            AF.low.SetCertainBit(4, reg.high.GetCertainBit(7)); // Set carry flag to the left most bit
+            reg.high.value = Convert.ToByte((reg.high.value << 1) & 0xFF); // Shift left
+            reg.high.SetCertainBit(7, AF.low.GetCertainBit(4)); // Set left most bit to the carry flag
+            AF.low.SetCertainBit(7, reg.high.value != 0); // Activate zero flag if A is 0
             AF.low.SetCertainBit(6, false); // Reset subtract flag
             AF.low.SetCertainBit(5, false); // Reset half carry flag
             AF.Sync();
+            reg.Sync();
+            return;
+        }
+        public void RLCL(ref Register16 reg)
+        {
+            AF.low.SetCertainBit(4, reg.low.GetCertainBit(7)); // Set carry flag to the left most bit
+            reg.low.value = Convert.ToByte((reg.low.value << 1) & 0xFF); // Shift left
+            reg.low.SetCertainBit(7, AF.low.GetCertainBit(4)); // Set left most bit to the carry flag
+            AF.low.SetCertainBit(7, reg.low.value != 0); // Activate zero flag if A is 0
+            AF.low.SetCertainBit(6, false); // Reset subtract flag
+            AF.low.SetCertainBit(5, false); // Reset half carry flag
+            AF.Sync();
+            reg.Sync();
             return;
         }
         public void RRCA(int duration)
@@ -1344,6 +1489,41 @@ namespace SharpBoi
                 AF.high.value += 60;
             AF.Sync();
             return;
+        }
+
+        public void CB() //A WHOLE NEW SET OF INSTRUCTIONS.
+        {
+            PC.value++;
+            switch (ram.Read(PC.value))
+            {
+                case 0x00: //RLC B
+                    RLCH(ref BC);
+                    break;
+                case 0x01: //RLC C
+                    RLCL(ref BC);
+                    break;
+                case 0x02: //RLC D
+                    RLCH(ref DE);
+                    break;
+                case 0x03: //RLC E
+                    RLCL(ref DE);
+                    break;
+                case 0x04: //RLC H
+                    RLCH(ref HL);
+                    break;
+                case 0x05: //RLC L
+                    RLCL(ref HL);
+                    break;
+                case 0x06: //RLC [HL]
+                    AF.low.SetCertainBit(4, (ram.Read(HL.value) & (1 << 6)) != 0); // Set carry flag to the left most bit
+                    ram.Write(Convert.ToByte((ram.Read(HL.value) << 1) & 0xFF), HL.value); // Shift left
+                    ram.Edit(ram.Read(HL.value),Convert.ToByte(AF.low.GetCertainBit(4)) * 128); // Set left most bit to the carry flag
+                    AF.low.SetCertainBit(7, ram.Read(HL.value) != 0); // Activate zero flag if A is 0
+                    AF.low.SetCertainBit(6, false); // Reset subtract flag
+                    AF.low.SetCertainBit(5, false); // Reset half carry flag
+                    AF.Sync();
+                    break;
+            }
         }
     }
 }
