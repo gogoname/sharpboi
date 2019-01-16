@@ -24,10 +24,12 @@ namespace SharpBoi
         }
         public void SetCertainBit(int bit, bool value)
         {
+            char[] tmp = Convert.ToString(this.value).PadLeft(8, '0').ToCharArray();
             if (value)
-                this.value |= Convert.ToByte(1 << bit);
+                tmp[bit] = '1';
             else
-                this.value ^= Convert.ToByte(1 << bit);
+                tmp[bit] = '0';
+            this.value = Convert.ToByte(tmp.ToString().Substring(0, 8), 2);
         }
         public void Sync()
         {

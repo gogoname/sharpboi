@@ -31,6 +31,7 @@ namespace SharpBoi
         Stack<byte> st = new Stack<byte>();
         bool isStopped;
         bool isHalted;
+        bool isIntsEnabled;
         short addr;
         byte tmp;
         public CPU(RAM ram)
@@ -52,9 +53,11 @@ namespace SharpBoi
             SP = new Register16(0xFFFE);
             isStopped = false;
             isHalted = false;
+            isIntsEnabled = false;
             addr = 0;
             tmp = 0;
         }
+
         public void Start(byte[] opcodes)
         {
             int counter = 0;
@@ -68,7 +71,8 @@ namespace SharpBoi
                         case 0x00: //NOP
                             break;
                         case 0x01: //LD BC, d16
-                            BC.value = BitConverter.ToUInt16(new byte[2] { ram.Read(PC.value + 1), ram.Read(PC.value + 2) }, 0);
+                            BC.value = BitConverter.ToUInt16(
+                                new byte[2] {ram.Read(PC.value + 1), ram.Read(PC.value + 2)}, 0);
                             PC.value += 2;
                             break;
                         case 0x02: //LD [BC], A
@@ -94,7 +98,8 @@ namespace SharpBoi
                             RLCA(4);
                             break;
                         case 0x08: //LD [a16], SP
-                            SP.value = ram.Read(BitConverter.ToUInt16(new byte[2] { ram.Read(PC.value + 1), ram.Read(PC.value + 2) }, 0));
+                            SP.value = ram.Read(
+                                BitConverter.ToUInt16(new byte[2] {ram.Read(PC.value + 1), ram.Read(PC.value + 2)}, 0));
                             PC.value += 2;
                             break;
                         case 0x09: //ADD HL, BC
@@ -124,7 +129,8 @@ namespace SharpBoi
                             isStopped = true;
                             break;
                         case 0x11: //LD DE, d16
-                            DE.value = BitConverter.ToUInt16(new byte[2] { ram.Read(PC.value + 1), ram.Read(PC.value + 2) }, 0);
+                            DE.value = BitConverter.ToUInt16(
+                                new byte[2] {ram.Read(PC.value + 1), ram.Read(PC.value + 2)}, 0);
                             PC.value++;
                             break;
                         case 0x12: //LD [DE], A
@@ -153,9 +159,9 @@ namespace SharpBoi
                             addr = ram.Read(PC.value + 1);
                             PC.value++;
                             if (addr > 0)
-                                PC.value += Convert.ToUInt16(addr);
+                                PC.value += Convert.ToUInt16(addr - 1);
                             else
-                                PC.value -= Convert.ToUInt16(addr * -1);
+                                PC.value -= Convert.ToUInt16((addr - 1) * -1);
                             break;
                         case 0x19: //ADD HL, DE
                             HL.value += DE.value;
@@ -189,13 +195,15 @@ namespace SharpBoi
                             if (!AF.low.GetCertainBit(7))
                             {
                                 if (addr > 0)
-                                    PC.value += Convert.ToUInt16(addr);
+                                    PC.value += Convert.ToUInt16(addr - 1);
                                 else
-                                    PC.value -= Convert.ToUInt16(addr * -1);
+                                    PC.value -= Convert.ToUInt16((addr - 1) * -1);
                             }
+
                             break;
                         case 0x21: //LD HL, d16
-                            HL.value = BitConverter.ToUInt16(new byte[2] { ram.Read(PC.value + 1), ram.Read(PC.value + 2) }, 0);
+                            HL.value = BitConverter.ToUInt16(
+                                new byte[2] {ram.Read(PC.value + 1), ram.Read(PC.value + 2)}, 0);
                             PC.value++;
                             break;
                         case 0x22: //LD [HL+], A
@@ -227,10 +235,11 @@ namespace SharpBoi
                             if (AF.low.GetCertainBit(7))
                             {
                                 if (addr > 0)
-                                    PC.value += Convert.ToUInt16(addr);
+                                    PC.value += Convert.ToUInt16(addr - 1);
                                 else
-                                    PC.value -= Convert.ToUInt16(addr * -1);
+                                    PC.value -= Convert.ToUInt16((addr - 1) * -1);
                             }
+
                             break;
                         case 0x29: //ADD HL, HL
                             HL.value *= 2;
@@ -266,10 +275,11 @@ namespace SharpBoi
                             if (!AF.low.GetCertainBit(4))
                             {
                                 if (addr > 0)
-                                    PC.value += Convert.ToUInt16(addr);
+                                    PC.value += Convert.ToUInt16(addr - 1);
                                 else
-                                    PC.value -= Convert.ToUInt16(addr * -1);
+                                    PC.value -= Convert.ToUInt16((addr - 1) * -1);
                             }
+
                             break;
                         case 0x31: //LD SP, d16
                             SP.value = ram.Read(PC.value + 1);
@@ -303,10 +313,11 @@ namespace SharpBoi
                             if (AF.low.GetCertainBit(4))
                             {
                                 if (addr > 0)
-                                    PC.value += Convert.ToUInt16(addr);
+                                    PC.value += Convert.ToUInt16(addr - 1);
                                 else
-                                    PC.value -= Convert.ToUInt16(addr * -1);
+                                    PC.value -= Convert.ToUInt16((addr - 1) * -1);
                             }
+
                             break;
                         case 0x39: //ADD HL, SP
                             HL.value += SP.value;
@@ -673,7 +684,8 @@ namespace SharpBoi
                             AF.low.SetCertainBit(7, AF.high.value == 0);
                             AF.low.SetCertainBit(6, false);
                             AF.low.SetCertainBit(5, AF.high.low == 15);
-                            AF.high.value += Convert.ToByte(ram.Read(HL.value) + Convert.ToByte(AF.low.GetCertainBit(4)));
+                            AF.high.value +=
+                                Convert.ToByte(ram.Read(HL.value) + Convert.ToByte(AF.low.GetCertainBit(4)));
                             AF.low.SetCertainBit(4, AF.high.value == 255);
                             AF.Sync();
                             break;
@@ -824,16 +836,459 @@ namespace SharpBoi
                             AF.Sync();
                             ram.Write(tmp, HL.value);
                             break;
-                        case 0x9F: //SBC A, A
+                        case 0x9F: //SBC A, A                   PROBLEMATIC!!!
                             AF.high.value = Convert.ToByte(0 - Convert.ToByte(AF.low.GetCertainBit(4)));
+                            AF.Sync();
+                            break;
+                        case 0xA0: //AND B
+                            AF.high.value &= BC.high.value;
+                            AF.low.SetCertainBit(7, AF.high.value == 0);
+                            AF.low.SetCertainBit(6, false);
+                            AF.low.SetCertainBit(5, true);
+                            AF.Sync();
+                            AF.low.SetCertainBit(4, false);
+                            break;
+                        case 0xA1: //AND C
+                            AF.high.value &= BC.low.value;
+                            AF.low.SetCertainBit(7, AF.high.value == 0);
+                            AF.low.SetCertainBit(6, false);
+                            AF.low.SetCertainBit(5, true);
+                            AF.low.SetCertainBit(4, false);
+                            AF.Sync();
+                            break;
+                        case 0xA2: //AND D
+                            AF.high.value &= DE.high.value;
+                            AF.low.SetCertainBit(7, AF.high.value == 0);
+                            AF.low.SetCertainBit(6, false);
+                            AF.low.SetCertainBit(5, true);
+                            AF.low.SetCertainBit(4, false);
+                            AF.Sync();
+                            break;
+                        case 0xA3: //AND E
+                            AF.high.value &= DE.low.value;
+                            AF.low.SetCertainBit(7, AF.high.value == 0);
+                            AF.low.SetCertainBit(6, false);
+                            AF.low.SetCertainBit(5, true);
+                            AF.low.SetCertainBit(4, false);
+                            AF.Sync();
+                            break;
+                        case 0xA4: //AND H
+                            AF.high.value &= HL.high.value;
+                            AF.low.SetCertainBit(7, AF.high.value == 0);
+                            AF.low.SetCertainBit(6, false);
+                            AF.low.SetCertainBit(5, true);
+                            AF.low.SetCertainBit(4, false);
+                            AF.Sync();
+                            break;
+                        case 0xA5: //AND L
+                            AF.high.value &= HL.low.value;
+                            AF.low.SetCertainBit(7, AF.high.value == 0);
+                            AF.low.SetCertainBit(6, false);
+                            AF.low.SetCertainBit(5, true);
+                            AF.low.SetCertainBit(4, false);
+                            AF.Sync();
+                            break;
+                        case 0xA6: //AND [HL]
+                            AF.high.value &= ram.Read(HL.value);
+                            AF.low.SetCertainBit(7, AF.high.value == 0);
+                            AF.low.SetCertainBit(6, false);
+                            AF.low.SetCertainBit(5, true);
+                            AF.low.SetCertainBit(4, false);
+                            AF.Sync();
+                            break;
+                        case 0xA7: //AND A
+                            AF.high.value &= AF.high.value;
+                            AF.low.SetCertainBit(7, AF.high.value == 0);
+                            AF.low.SetCertainBit(6, false);
+                            AF.low.SetCertainBit(5, true);
+                            AF.low.SetCertainBit(4, false);
+                            AF.Sync();
+                            break;
+                        case 0xA8: //XOR B
+                            AF.high.value ^= BC.high.value;
+                            AF.low.SetCertainBit(7, AF.high.value == 0);
+                            AF.low.SetCertainBit(6, false);
+                            AF.low.SetCertainBit(5, false);
+                            AF.low.SetCertainBit(4, false);
+                            AF.Sync();
+                            break;
+                        case 0xA9: //XOR C
+                            AF.high.value ^= BC.low.value;
+                            AF.low.SetCertainBit(7, AF.high.value == 0);
+                            AF.low.SetCertainBit(6, false);
+                            AF.low.SetCertainBit(5, false);
+                            AF.low.SetCertainBit(4, false);
+                            AF.Sync();
+                            break;
+                        case 0xAA: //XOR D
+                            AF.high.value ^= DE.high.value;
+                            AF.low.SetCertainBit(7, AF.high.value == 0);
+                            AF.low.SetCertainBit(6, false);
+                            AF.low.SetCertainBit(5, false);
+                            AF.low.SetCertainBit(4, false);
+                            AF.Sync();
+                            break;
+                        case 0xAB: //XOR E
+                            AF.high.value ^= DE.low.value;
+                            AF.low.SetCertainBit(7, AF.high.value == 0);
+                            AF.low.SetCertainBit(6, false);
+                            AF.low.SetCertainBit(5, false);
+                            AF.low.SetCertainBit(4, false);
+                            AF.Sync();
+                            break;
+                        case 0xAC: //XOR H
+                            AF.high.value ^= HL.high.value;
+                            AF.low.SetCertainBit(7, AF.high.value == 0);
+                            AF.low.SetCertainBit(6, false);
+                            AF.low.SetCertainBit(5, false);
+                            AF.low.SetCertainBit(4, false);
+                            AF.Sync();
+                            break;
+                        case 0xAD: //XOR L
+                            AF.high.value ^= HL.low.value;
+                            AF.low.SetCertainBit(7, AF.high.value == 0);
+                            AF.low.SetCertainBit(6, false);
+                            AF.low.SetCertainBit(5, false);
+                            AF.low.SetCertainBit(4, false);
+                            AF.Sync();
+                            break;
+                        case 0xAE: //XOR [HL]
+                            AF.high.value ^= ram.Read(HL.value);
+                            AF.low.SetCertainBit(7, AF.high.value == 0);
+                            AF.low.SetCertainBit(6, false);
+                            AF.low.SetCertainBit(5, false);
+                            AF.low.SetCertainBit(4, false);
+                            AF.Sync();
+                            break;
+                        case 0xAF: //XOR A
+                            AF.high.value ^= AF.high.value;
+                            AF.low.SetCertainBit(7, AF.high.value == 0);
+                            AF.low.SetCertainBit(6, false);
+                            AF.low.SetCertainBit(5, false);
+                            AF.low.SetCertainBit(4, false);
+                            AF.Sync();
+                            break;
+                        case 0xB0: //OR B
+                            AF.high.value |= BC.high.value;
+                            AF.low.SetCertainBit(7, AF.high.value == 0);
+                            AF.low.SetCertainBit(6, false);
+                            AF.low.SetCertainBit(5, false);
+                            AF.low.SetCertainBit(4, false);
+                            AF.Sync();
+                            break;
+                        case 0xB1: //OR C
+                            AF.high.value |= BC.low.value;
+                            AF.low.SetCertainBit(7, AF.high.value == 0);
+                            AF.low.SetCertainBit(6, false);
+                            AF.low.SetCertainBit(5, false);
+                            AF.low.SetCertainBit(4, false);
+                            AF.Sync();
+                            break;
+                        case 0xB2: //OR D
+                            AF.high.value |= DE.high.value;
+                            AF.low.SetCertainBit(7, AF.high.value == 0);
+                            AF.low.SetCertainBit(6, false);
+                            AF.low.SetCertainBit(5, false);
+                            AF.low.SetCertainBit(4, false);
+                            AF.Sync();
+                            break;
+                        case 0xB3: //OR E
+                            AF.high.value |= DE.low.value;
+                            AF.low.SetCertainBit(7, AF.high.value == 0);
+                            AF.low.SetCertainBit(6, false);
+                            AF.low.SetCertainBit(5, false);
+                            AF.low.SetCertainBit(4, false);
+                            AF.Sync();
+                            break;
+                        case 0xB4: //OR H
+                            AF.high.value |= HL.high.value;
+                            AF.low.SetCertainBit(7, AF.high.value == 0);
+                            AF.low.SetCertainBit(6, false);
+                            AF.low.SetCertainBit(5, false);
+                            AF.low.SetCertainBit(4, false);
+                            AF.Sync();
+                            break;
+                        case 0xB5: //OR L
+                            AF.high.value |= HL.low.value;
+                            AF.low.SetCertainBit(7, AF.high.value == 0);
+                            AF.low.SetCertainBit(6, false);
+                            AF.low.SetCertainBit(5, false);
+                            AF.low.SetCertainBit(4, false);
+                            AF.Sync();
+                            break;
+                        case 0xB6: //OR [HL]
+                            AF.high.value |= ram.Read(HL.value);
+                            AF.low.SetCertainBit(7, AF.high.value == 0);
+                            AF.low.SetCertainBit(6, false);
+                            AF.low.SetCertainBit(5, false);
+                            AF.low.SetCertainBit(4, false);
+                            AF.Sync();
+                            break;
+                        case 0xB7: //OR A
+                            AF.high.value |= AF.high.value;
+                            AF.low.SetCertainBit(7, AF.high.value == 0);
+                            AF.low.SetCertainBit(6, false);
+                            AF.low.SetCertainBit(5, false);
+                            AF.low.SetCertainBit(4, false);
+                            AF.Sync();
+                            break;
+                        case 0xB8: //CP B
+                            AF.low.SetCertainBit(5, AF.high.low > BC.high.low);
+                            AF.low.SetCertainBit(4, AF.high.high > BC.high.high);
+                            AF.low.SetCertainBit(7, AF.high.value == BC.high.value);
+                            AF.low.SetCertainBit(6, true);
+                            AF.Sync();
+                            break;
+                        case 0xB9: //CP C
+                            AF.low.SetCertainBit(5, AF.high.low > BC.low.low);
+                            AF.low.SetCertainBit(4, AF.high.high > BC.low.high);
+                            AF.low.SetCertainBit(7, AF.high.value == BC.low.value);
+                            AF.low.SetCertainBit(6, true);
+                            AF.Sync();
+                            break;
+                        case 0xBA: //CP D
+                            AF.low.SetCertainBit(5, AF.high.low > DE.high.low);
+                            AF.low.SetCertainBit(4, AF.high.high > DE.high.high);
+                            AF.low.SetCertainBit(7, AF.high.value == DE.high.value);
+                            AF.low.SetCertainBit(6, true);
+                            AF.Sync();
+                            break;
+                        case 0xBB: //CP E
+                            AF.low.SetCertainBit(5, AF.high.low > DE.low.low);
+                            AF.low.SetCertainBit(4, AF.high.high > DE.low.high);
+                            AF.low.SetCertainBit(7, AF.high.value == DE.low.value);
+                            AF.low.SetCertainBit(6, true);
+                            AF.Sync();
+                            break;
+                        case 0xBC: //CP H
+                            AF.low.SetCertainBit(5, AF.high.low > HL.high.low);
+                            AF.low.SetCertainBit(4, AF.high.high > HL.high.high);
+                            AF.low.SetCertainBit(7, AF.high.value == HL.high.value);
+                            AF.low.SetCertainBit(6, true);
+                            AF.Sync();
+                            break;
+                        case 0xBD: //CP L
+                            AF.low.SetCertainBit(5, AF.high.low > HL.low.low);
+                            AF.low.SetCertainBit(4, AF.high.high > HL.low.high);
+                            AF.low.SetCertainBit(7, AF.high.value == HL.low.value);
+                            AF.low.SetCertainBit(6, true);
+                            AF.Sync();
+                            break;
+                        case 0xBE: //CP [HL]
+                            AF.low.SetCertainBit(5, AF.high.low > ram.Read(HL.value));
+                            AF.low.SetCertainBit(4, AF.high.high > ram.Read(HL.value));
+                            AF.low.SetCertainBit(7, AF.high.value == ram.Read(HL.value));
+                            AF.low.SetCertainBit(6, true);
+                            AF.Sync();
+                            break;
+                        case 0xBF: //CP A
+                            AF.low.SetCertainBit(5, true);
+                            AF.low.SetCertainBit(4, true);
+                            AF.low.SetCertainBit(7, true);
+                            AF.low.SetCertainBit(6, true);
+                            AF.Sync();
+                            break;
+                        case 0xC0: //RET NZ
+                            if (!AF.low.GetCertainBit(7))
+                            {
+                                PC.value = ram.Read(Convert.ToUInt16(new byte[] {st.Pop(), st.Pop()}));
+                                SP.value += 2;
+                            }
+                            break;
+                        case 0xC1: //POP BC
+                            BC.value = Convert.ToUInt16(new byte[] {st.Pop(), st.Pop()});
+                            SP.value += 2;
+                            break;
+                        case 0xC2: //JP NZ, a16
+                            if (!AF.low.GetCertainBit(7))
+                            {
+                                PC.value = BitConverter.ToUInt16(
+                                    new byte[2] {ram.Read(PC.value + 1), ram.Read(PC.value + 2)}, 0);
+                                PC.value--;
+                            }
                             break;
                         case 0xC3: //JP a16
-                            PC.value = BitConverter.ToUInt16(new byte[2] { ram.Read(PC.value + 1), ram.Read(PC.value + 2) }, 0);
+                            PC.value = BitConverter.ToUInt16(
+                                new byte[2] {ram.Read(PC.value + 1), ram.Read(PC.value + 2)}, 0);
+                            PC.value--;
+                            break;
+                        case 0xC4: //CALL NZ, a16
+                            if (!AF.low.GetCertainBit(7))
+                            {
+                                st.Push(Convert.ToByte((PC.value + 1) >> 8));
+                                st.Push(Convert.ToByte((PC.value + 1) & 0x00FF));
+                                PC.value = BitConverter.ToUInt16(
+                                    new byte[2] {ram.Read(PC.value + 1), ram.Read(PC.value + 2)}, 0);
+                                PC.value--;
+                            }
+                            break;
+                        case 0xC5: //PUSH BC
+                            st.Push(BC.high.value);
+                            st.Push(BC.low.value);
+                            SP.value -= 2;
+                            break;
+                        case 0xC6: //ADD A, d8
+                            AF.low.SetCertainBit(7, AF.high.value == 0);
+                            AF.low.SetCertainBit(6, false);
+                            AF.low.SetCertainBit(5, AF.high.low == 15);
+                            AF.low.SetCertainBit(4, AF.high.value == 255);
+                            AF.high.value += ram.Read(PC.value + 1);
+                            PC.value++;
+                            AF.Sync();
+                            break;
+                        case 0xC7: //RST 00H
+                            PC.value = 0x0;
+                            PC.value--;
+                            break;
+                        case 0xC8: //RET Z
+                            if (AF.low.GetCertainBit(7))
+                            {
+                                PC.value = ram.Read(Convert.ToUInt16(new byte[] { st.Pop(), st.Pop() }));
+                                SP.value += 2;
+                            }
+                            break;
+                        case 0xC9: //RET
+                            PC.value = ram.Read(Convert.ToUInt16(new byte[] { st.Pop(), st.Pop() }));
+                            SP.value += 2;
+                            break;
+                        case 0xCA: //JP Z, a16
+                            if (AF.low.GetCertainBit(7))
+                            {
+                                PC.value = BitConverter.ToUInt16(
+                                    new byte[2] { ram.Read(PC.value + 1), ram.Read(PC.value + 2) }, 0);
+                                PC.value--;
+                            }
+                            break;
+                        case 0xCB: //THE MIGHTY CB INSTRUCTION (Opens up a bunch of more instructions
+                            CB();
+                            break;
+                        case 0xCC: //CALL Z, a16
+                            if (AF.low.GetCertainBit(7))
+                            {
+                                st.Push(Convert.ToByte((PC.value + 1) >> 8));
+                                st.Push(Convert.ToByte((PC.value + 1) & 0x00FF));
+                                PC.value = BitConverter.ToUInt16(
+                                    new byte[2] { ram.Read(PC.value + 1), ram.Read(PC.value + 2) }, 0);
+                                PC.value--;
+                            }
+                            break;
+                        case 0xCD: //CALL a16
+                                st.Push(Convert.ToByte((PC.value + 1) >> 8));
+                                st.Push(Convert.ToByte((PC.value + 1) & 0x00FF));
+                                PC.value = BitConverter.ToUInt16(
+                                    new byte[2] { ram.Read(PC.value + 1), ram.Read(PC.value + 2) }, 0);
+                                PC.value--;
+                            break;
+                        case 0xCE: //ADC A, d8
+                            AF.low.SetCertainBit(7, AF.high.value == 0);
+                            AF.low.SetCertainBit(6, false);
+                            AF.low.SetCertainBit(5, AF.high.low == 15);
+                            AF.high.value += Convert.ToByte(ram.Read(PC.value + 1) + Convert.ToByte(AF.low.GetCertainBit(4)));
+                            AF.low.SetCertainBit(4, AF.high.value == 255);
+                            PC.value++;
+                            AF.Sync();
+                            break;
+                        case 0xCF: //RST 08H
+                            PC.value = 0x8;
+                            PC.value--;
+                            break;
+                        case 0xD0: //RET NC
+                            if (!AF.low.GetCertainBit(4))
+                            {
+                                PC.value = ram.Read(Convert.ToUInt16(new byte[] { st.Pop(), st.Pop() }));
+                                SP.value += 2;
+                            }
+                            break;
+                        case 0xD1: //POP DE
+                            DE.value = Convert.ToUInt16(new byte[] { st.Pop(), st.Pop() });
+                            SP.value += 2;
+                            break;
+                        case 0xD2: //JP NC, a16
+                            if (!AF.low.GetCertainBit(4))
+                            {
+                                PC.value = BitConverter.ToUInt16(
+                                    new byte[2] { ram.Read(PC.value + 1), ram.Read(PC.value + 2) }, 0);
+                                PC.value--;
+                            }
+                            break;
+                        case 0xD4: //CALL NC, a16
+                            if (!AF.low.GetCertainBit(4))
+                            {
+                                st.Push(Convert.ToByte((PC.value + 1) >> 8));
+                                st.Push(Convert.ToByte((PC.value + 1) & 0x00FF));
+                                PC.value = BitConverter.ToUInt16(
+                                    new byte[2] { ram.Read(PC.value + 1), ram.Read(PC.value + 2) }, 0);
+                                PC.value--;
+                            }
+                            break;
+                        case 0xD5: //PUSH DE
+                            st.Push(DE.high.value);
+                            st.Push(DE.low.value);
+                            SP.value -= 2;
+                            break;
+                        case 0xD6: //SUB d8
+                            AF.low.SetCertainBit(5, AF.high.low > Convert.ToByte(ram.Read(PC.value + 1) & 0x0F));
+                            AF.low.SetCertainBit(4, AF.high.high > Convert.ToByte((ram.Read(PC.value + 1) >> 4) & 0x0F));
+                            AF.high.value -= ram.Read(PC.value + 1);
+                            AF.low.SetCertainBit(7, AF.high.value == 0);
+                            AF.low.SetCertainBit(6, true);
+                            PC.value++;
+                            AF.Sync();
+                            break;
+                        case 0xD7: //RST 10H
+                            PC.value = 0x10;
+                            PC.value--;
+                            break;
+                        case 0xD8: //RET C
+                            if (AF.low.GetCertainBit(4))
+                            {
+                                PC.value = ram.Read(Convert.ToUInt16(new byte[] { st.Pop(), st.Pop() }));
+                                SP.value += 2;
+                            }
+                            break;
+                        case 0xD9: //RETI
+                            PC.value = ram.Read(Convert.ToUInt16(new byte[] { st.Pop(), st.Pop() }));
+                            SP.value += 2;
+                            isIntsEnabled = true;
+                            break;
+                        case 0xDA: //JP C, a16
+                            if (AF.low.GetCertainBit(4))
+                            {
+                                PC.value = BitConverter.ToUInt16(
+                                    new byte[2] { ram.Read(PC.value + 1), ram.Read(PC.value + 2) }, 0);
+                                PC.value--;
+                            }
+                            break;
+                        case 0xDC: //CALL C, a16
+                            if (AF.low.GetCertainBit(4))
+                            {
+                                st.Push(Convert.ToByte((PC.value + 1) >> 8));
+                                st.Push(Convert.ToByte((PC.value + 1) & 0x00FF));
+                                PC.value = BitConverter.ToUInt16(
+                                    new byte[2] { ram.Read(PC.value + 1), ram.Read(PC.value + 2) }, 0);
+                                PC.value--;
+                            }
+                            break;
+                        case 0xDE: //SBC A, d8      DEAL WITH IT LATER
+                            break;
+                        case 0xDF: //RST 18H
+                            PC.value = 0x18;
+                            PC.value--;
+                            break;
+                        case 0xE0: //LDH [a8], A
+                            ram.Write(AF.high.value, ram.Read(0xFF00 + PC.value + 1));
+                            PC.value++;
+                            break;
+                        case 0xE1: //POP HL
+                            HL.value = Convert.ToUInt16(new byte[] { st.Pop(), st.Pop() });
+                            SP.value += 2;
+                            break;
+                        case 0xE2: //LD [C], A
+                            ram.Write(AF.high.value, ram.Read(0xFF00 + BC.low.value));
                             break;
                     }
-                    PC.value++;
+                    counter++;
                 }
-                counter++;
             }
         }
 
