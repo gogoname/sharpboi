@@ -37,6 +37,7 @@ namespace SharpBoi
         bool isEI;
         sbyte addr;
         byte tmp;
+        bool old;
         public CPU(RAM ram)
         {
             this.ram = ram;
@@ -59,6 +60,7 @@ namespace SharpBoi
             isIntsEnabled = false;
             isDI = false;
             isEI = false;
+            old = true;
             addr = 0;
             tmp = 0;
         }
@@ -139,7 +141,7 @@ namespace SharpBoi
                             PC.value++;
                             break;
                         case 0x0F: //RRCA
-                            RRCA(4);
+                            RRCH(ref AF);
                             break;
                         case 0x10: //STOP
                             isStopped = true;
@@ -169,7 +171,7 @@ namespace SharpBoi
                             DE.Sync();
                             break;
                         case 0x17: //RLA
-                            RLA(4);
+                            RLH(ref AF);
                             break;
                         case 0x18: //JR r8
                             addr = (sbyte) ram.Read(PC.value + 1);
@@ -203,7 +205,7 @@ namespace SharpBoi
                             DE.Sync();
                             break;
                         case 0x1F: //RRA
-                            RRA(4);
+                            RRH(ref AF);
                             break;
                         case 0x20: //JR NZ, r8
                             addr = (sbyte) ram.Read(PC.value + 1);
@@ -1424,7 +1426,7 @@ namespace SharpBoi
             }
         }
 
-        public void RLCH(ref Register16 reg)
+        public void RLCH(ref Register16 reg) //Rotate Left through Carry - High
         {
             AF.low.SetCertainBit(4, reg.high.GetCertainBit(7)); // Set carry flag to the left most bit
             reg.high.value = Convert.ToByte((reg.high.value << 1) & 0xFF); // Shift left
@@ -1436,7 +1438,7 @@ namespace SharpBoi
             reg.Sync();
             return;
         }
-        public void RLCL(ref Register16 reg)
+        public void RLCL(ref Register16 reg) //Rotate Left through Carry - Low
         {
             AF.low.SetCertainBit(4, reg.low.GetCertainBit(7)); // Set carry flag to the left most bit
             reg.low.value = Convert.ToByte((reg.low.value << 1) & 0xFF); // Shift left
@@ -1448,37 +1450,150 @@ namespace SharpBoi
             reg.Sync();
             return;
         }
-        public void RRCA(int duration)
+        public void RRCH(ref Register16 reg) //Rotate Right through Carry - High
         {
-            AF.low.SetCertainBit(4, AF.high.GetCertainBit(0)); // Set carry flag to the right most bit
-            AF.high.value = Convert.ToByte((AF.high.value >> 1) & 0xFF); // Shift right
-            AF.high.SetCertainBit(0, AF.low.GetCertainBit(4)); // Set right most bit to the carry flag
-            AF.low.SetCertainBit(7, AF.high.value != 0); // Activate zero flag if A is 0
+            AF.low.SetCertainBit(4, reg.high.GetCertainBit(0)); // Set carry flag to the right most bit
+            reg.high.value = Convert.ToByte((reg.high.value >> 1) & 0xFF); // Shift right
+            reg.high.SetCertainBit(0, AF.low.GetCertainBit(4)); // Set right most bit to the carry flag
+            AF.low.SetCertainBit(7, reg.high.value != 0); // Activate zero flag if A is 0
             AF.low.SetCertainBit(6, false); // Reset subtract flag
             AF.low.SetCertainBit(5, false); // Reset half carry flag
             AF.Sync();
+            reg.Sync();
             return;
         }
-        public void RLA(int duration)
+        public void RRCL(ref Register16 reg) //Rotate Right through Carry - Low
         {
-            bool old = AF.high.GetCertainBit(7); // Save old MSB
-            AF.high.value = Convert.ToByte((AF.high.value << 1) & 0xFF); // Shift left
+            AF.low.SetCertainBit(4, reg.low.GetCertainBit(0)); // Set carry flag to the right most bit
+            reg.low.value = Convert.ToByte((reg.low.value >> 1) & 0xFF); // Shift right
+            reg.low.SetCertainBit(0, AF.low.GetCertainBit(4)); // Set right most bit to the carry flag
+            AF.low.SetCertainBit(7, reg.low.value != 0); // Activate zero flag if A is 0
+            AF.low.SetCertainBit(6, false); // Reset subtract flag
+            AF.low.SetCertainBit(5, false); // Reset half carry flag
+            AF.Sync();
+            reg.Sync();
+            return;
+        }
+        public void RLH(ref Register16 reg) //Rotate Left - High
+        {
+            old = reg.high.GetCertainBit(7); // Save old MSB
+            reg.high.value = Convert.ToByte((reg.high.value << 1) & 0xFF); // Shift left
             AF.low.SetCertainBit(4, old); // Set old MSB to carry
-            AF.low.SetCertainBit(7, (AF.high.value != 0) && !old); // Activate zero flag if the whole thing is 0
+            AF.low.SetCertainBit(7, (reg.high.value != 0) && !old); // Activate zero flag if the whole thing is 0
             AF.low.SetCertainBit(6, false); // Reset subtract flag
             AF.low.SetCertainBit(5, false);// Reset half carry flag
             AF.Sync();
+            reg.Sync();
             return;
         }
-        public void RRA(int duration)
+        public void RLL(ref Register16 reg) //Rotate Left - Low
         {
-            bool old = AF.high.GetCertainBit(0); // Save old LSB
-            AF.high.value = Convert.ToByte((AF.high.value >> 1) & 0xFF); // Shift right
-            AF.low.SetCertainBit(4, old); // Set old LSB to carry
-            AF.low.SetCertainBit(7, (AF.high.value != 0) && !old); // Activate zero flag if the whole thing is 0
+            old = reg.low.GetCertainBit(7); // Save old MSB
+            reg.low.value = Convert.ToByte((reg.low.value << 1) & 0xFF); // Shift left
+            AF.low.SetCertainBit(4, old); // Set old MSB to carry
+            AF.low.SetCertainBit(7, (reg.low.value != 0) && !old); // Activate zero flag if the whole thing is 0
             AF.low.SetCertainBit(6, false); // Reset subtract flag
             AF.low.SetCertainBit(5, false);// Reset half carry flag
             AF.Sync();
+            reg.Sync();
+            return;
+        }
+        public void RRH(ref Register16 reg) //Rotate Right - High
+        {
+            old = reg.high.GetCertainBit(0); // Save old LSB
+            reg.high.value = Convert.ToByte((reg.high.value >> 1) & 0xFF); // Shift right
+            AF.low.SetCertainBit(4, old); // Set old LSB to carry
+            AF.low.SetCertainBit(7, (reg.high.value != 0) && !old); // Activate zero flag if the whole thing is 0
+            AF.low.SetCertainBit(6, false); // Reset subtract flag
+            AF.low.SetCertainBit(5, false);// Reset half carry flag
+            AF.Sync();
+            reg.Sync();
+            return;
+        }
+        public void RRL(ref Register16 reg) //Rotate Right - Low
+        {
+            old = reg.low.GetCertainBit(0); // Save old LSB
+            reg.low.value = Convert.ToByte((reg.low.value >> 1) & 0xFF); // Shift right
+            AF.low.SetCertainBit(4, old); // Set old LSB to carry
+            AF.low.SetCertainBit(7, (reg.low.value != 0) && !old); // Activate zero flag if the whole thing is 0
+            AF.low.SetCertainBit(6, false); // Reset subtract flag
+            AF.low.SetCertainBit(5, false);// Reset half carry flag
+            AF.Sync();
+            reg.Sync();
+            return;
+        }
+        public void SLAH (ref Register16 reg) //Shift Left through carry - High
+        {
+            old = reg.high.GetCertainBit(7);
+            reg.high.value = Convert.ToByte((reg.high.value << 1) & 0xFF);
+            AF.low.SetCertainBit(7, reg.high.value == 0);
+            AF.low.SetCertainBit(6, false);
+            AF.low.SetCertainBit(5, false);
+            AF.low.SetCertainBit(4, old);
+            AF.Sync();
+            reg.Sync();
+            return;
+        }
+        public void SLAL(ref Register16 reg) //Shift Left through carry - Low
+        {
+            old = reg.low.GetCertainBit(7);
+            reg.low.value = Convert.ToByte((reg.low.value << 1) & 0xFF);
+            AF.low.SetCertainBit(7, reg.low.value == 0);
+            AF.low.SetCertainBit(6, false);
+            AF.low.SetCertainBit(5, false);
+            AF.low.SetCertainBit(4, old);
+            AF.Sync();
+            reg.Sync();
+            return;
+        }
+        public void SRAH(ref Register16 reg) //Shift Right through carry - High
+        {
+            old = reg.high.GetCertainBit(0);
+            reg.high.value = Convert.ToByte((reg.high.value >> 1) & 0xFF);
+            AF.low.SetCertainBit(7, reg.high.value == 0);
+            AF.low.SetCertainBit(6, false);
+            AF.low.SetCertainBit(5, false);
+            AF.low.SetCertainBit(4, old);
+            AF.Sync();
+            reg.Sync();
+            return;
+        }
+        public void SRAL(ref Register16 reg) //Shift Right through carry - Low
+        {
+            old = reg.low.GetCertainBit(0);
+            reg.low.value = Convert.ToByte((reg.low.value >> 1) & 0xFF);
+            AF.low.SetCertainBit(7, reg.low.value == 0);
+            AF.low.SetCertainBit(6, false);
+            AF.low.SetCertainBit(5, false);
+            AF.low.SetCertainBit(4, old);
+            AF.Sync();
+            reg.Sync();
+            return;
+        }
+        public void SWAPH(ref Register16 reg) //SWAP the nibbles - High
+        {
+            byte oldLow = reg.high.low;
+            reg.high.low = reg.high.high;
+            reg.high.high = oldLow;
+            AF.low.SetCertainBit(7, reg.high.value == 0);
+            AF.low.SetCertainBit(6, false);
+            AF.low.SetCertainBit(5, false);
+            AF.low.SetCertainBit(4, false);
+            AF.Sync();
+            reg.Sync();
+            return;
+        }
+        public void SWAPL(ref Register16 reg) //SWAP the nibbles - Low
+        {
+            byte oldLow = reg.low.low;
+            reg.low.low = reg.low.high;
+            reg.low.high = oldLow;
+            AF.low.SetCertainBit(7, reg.low.value == 0);
+            AF.low.SetCertainBit(6, false);
+            AF.low.SetCertainBit(5, false);
+            AF.low.SetCertainBit(4, false);
+            AF.Sync();
+            reg.Sync();
             return;
         }
         public void DAA(int duration) //Someone actually thought this was a good idea. Weird 90s people
@@ -1522,6 +1637,171 @@ namespace SharpBoi
                     AF.low.SetCertainBit(6, false); // Reset subtract flag
                     AF.low.SetCertainBit(5, false); // Reset half carry flag
                     AF.Sync();
+                    break;
+                case 0x07: //RLC A
+                    RLCH(ref AF);
+                    break;
+                case 0x08: //RRC B
+                    RRCH(ref BC);
+                    break;
+                case 0x09: //RRC C
+                    RRCL(ref BC);
+                    break;
+                case 0x0A: //RRC D
+                    RRCH(ref DE);
+                    break;
+                case 0x0B: //RRC E
+                    RRCL(ref DE);
+                    break;
+                case 0x0C: //RRC H
+                    RRCH(ref HL);
+                    break;
+                case 0x0D: //RRC L
+                    RRCL(ref HL);
+                    break;
+                case 0x0E: //RRC [HL]
+                    AF.low.SetCertainBit(4, (ram.Read(HL.value) & (1)) != 0); // Set carry flag to the right most bit
+                    ram.Write(Convert.ToByte((ram.Read(HL.value) >> 1) & 0xFF), HL.value); // Shift right
+                    ram.Edit(ram.Read(HL.value), Convert.ToByte(AF.low.GetCertainBit(4))); // Set right most bit to the carry flag
+                    AF.low.SetCertainBit(7, ram.Read(HL.value) != 0); // Activate zero flag if A is 0
+                    AF.low.SetCertainBit(6, false); // Reset subtract flag
+                    AF.low.SetCertainBit(5, false); // Reset half carry flag
+                    AF.Sync();
+                    break;
+                case 0x0F: //RRC A
+                    RRCH(ref AF);
+                    break;
+                case 0x10: //RL B
+                    RLH(ref BC);
+                    break;
+                case 0x11: //RL C
+                    RLL(ref BC);
+                    break;
+                case 0x12: //RL D
+                    RLH(ref DE);
+                    break;
+                case 0x13: //RL E
+                    RLL(ref DE);
+                    break;
+                case 0x14: //RL H
+                    RLH(ref HL);
+                    break;
+                case 0x15: //RL L
+                    RLL(ref HL);
+                    break;
+                case 0x16: //RL [HL]
+                    old = (ram.Read(HL.value) & (1 << 6)) != 0; // Save old MSB
+                    ram.Write(Convert.ToByte((ram.Read(HL.value) << 1) & 0xFF), HL.value); // Shift left
+                    AF.low.SetCertainBit(4, old); // Set old MSB to carry
+                    AF.low.SetCertainBit(7, (ram.Read(HL.value) != 0) && !old); // Activate zero flag if the whole thing is 0
+                    AF.low.SetCertainBit(6, false); // Reset subtract flag
+                    AF.low.SetCertainBit(5, false);// Reset half carry flag
+                    AF.Sync();
+                    break;
+                case 0x17: //RL A
+                    RLH(ref AF);
+                    break;
+                case 0x18: //RR B
+                    RRH(ref BC);
+                    break;
+                case 0x19: //RR C
+                    RRL(ref BC);
+                    break;
+                case 0x1A: //RR D
+                    RRH(ref DE);
+                    break;
+                case 0x1B: //RR E
+                    RRL(ref DE);
+                    break;
+                case 0x1C: //RR H
+                    RRH(ref HL);
+                    break;
+                case 0x1D: //RR L
+                    RRL(ref HL);
+                    break;
+                case 0x1E: //RR [HL]
+                    old = (ram.Read(HL.value) & (1)) != 0; // Save old LSB
+                    ram.Write(Convert.ToByte((ram.Read(HL.value) >> 1) & 0xFF), HL.value); // Shift right
+                    AF.low.SetCertainBit(4, old); // Set old LSB to carry
+                    AF.low.SetCertainBit(7, (ram.Read(HL.value) != 0) && !old); // Activate zero flag if the whole thing is 0
+                    AF.low.SetCertainBit(6, false); // Reset subtract flag
+                    AF.low.SetCertainBit(5, false);// Reset half carry flag
+                    AF.Sync();
+                    break;
+                case 0x1F: //RR A
+                    RRH(ref AF);
+                    break;
+                case 0x20: //SLA B
+                    SLAH(ref BC);
+                    break;
+                case 0x21: //SLA C
+                    SLAL(ref BC);
+                    break;
+                case 0x22: //SLA D
+                    SLAH(ref DE);
+                    break;
+                case 0x23: //SLA E
+                    SLAL(ref DE);
+                    break;
+                case 0x24: //SLA H
+                    SLAH(ref HL);
+                    break;
+                case 0x25: //SLA L
+                    SLAL(ref HL);
+                    break;
+                case 0x26: //SLA [HL]
+                    // AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                    break;
+                case 0x27: //SLA A
+                    SLAH(ref AF);
+                    break;
+                case 0x28: //SRA B
+                    SRAH(ref BC);
+                    break;
+                case 0x29: //SRA C
+                    SRAL(ref BC);
+                    break;
+                case 0x2A: //SRA D
+                    SRAH(ref DE);
+                    break;
+                case 0x2B: //SRA E
+                    SRAL(ref DE);
+                    break;
+                case 0x2C: //SRA H
+                    SRAH(ref HL);
+                    break;
+                case 0x2D: //SRA L
+                    SRAL(ref HL);
+                    break;
+                case 0x2E: //SRA [HL]
+                    // AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                    break;
+                case 0x2F: //SRA A
+                    SRAH(ref AF);
+                    break;
+                case 0x30: //SWAP B
+                    SWAPH(ref BC);
+                    break;
+                case 0x31: //SWAP C
+                    SWAPL(ref BC);
+                    break;
+                case 0x32: //SWAP D
+                    SWAPH(ref DE);
+                    break;
+                case 0x33: //SWAP E
+                    SWAPL(ref DE);
+                    break;
+                case 0x34: //SWAP H
+                    SWAPH(ref HL);
+                    break;
+                case 0x35: //SWAP L
+                    SWAPL(ref HL);
+                    break;
+                case 0x36: //SWAP [HL]
+                    // AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                    break;
+                case 0x37: //SWAP A
+                    SWAPH(ref AF);
                     break;
             }
         }
