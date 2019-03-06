@@ -20,7 +20,7 @@ namespace SharpBoi
         }
         public bool GetCertainBit(int bit)
         {
-            return (value & (1 << bit - 1)) != 0;
+            return (value & (1 << bit)) != 0;
         }
         public void SetCertainBit(int bit, bool value)
         {
@@ -29,7 +29,8 @@ namespace SharpBoi
                 tmp[bit] = '1';
             else
                 tmp[bit] = '0';
-            this.value = Convert.ToByte(tmp.ToString().Substring(0, 8), 2);
+            string str = new string(tmp);
+            this.value = Convert.ToByte(str, 2);
         }
         public void Sync()
         {

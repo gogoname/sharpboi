@@ -19,7 +19,6 @@ C:\Users\itsik\SharpBoi\SharpBoi\obj\Debug\SharpBoi.csproj.GenerateResource.Cach
 C:\Users\itsik\SharpBoi\SharpBoi\obj\Debug\SharpBoi.csproj.CoreCompileInputs.cache
 C:\Users\itsik\SharpBoi\SharpBoi\obj\Debug\SharpBoi.exe
 C:\Users\itsik\SharpBoi\SharpBoi\obj\Debug\SharpBoi.pdb
-C:\Users\itsik\SharpBoi\SharpBoi\bin\Debug\opcodes.json
 C:\Users\itsik\SharpBoi\SharpBoi\bin\Debug\SharpBoi.exe.config
 C:\Users\itsik\SharpBoi\SharpBoi\bin\Debug\SharpBoi.exe
 C:\Users\itsik\SharpBoi\SharpBoi\bin\Debug\SharpBoi.pdb

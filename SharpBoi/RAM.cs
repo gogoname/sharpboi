@@ -8,49 +8,45 @@ namespace SharpBoi
 {
     class RAM
     {
-        byte[] ram = new byte[65535];
-        public bool Write(byte data, int location)
+        private byte[] ram = new byte[65535];
+        public void Write(byte data, int location)
         {
-            try
+            if (location > 0xE000 && location < 0xFE00) 
             {
-                if (location > 0xE000 && location < 0xFE00) 
-                {
-                    ram[location] = data;
-                    ram[location - 0x2000] = data;
-                }
-                else if (location > 0xC000 && location < 0xDE00)
-                {
-                    ram[location] = data;
-                    ram[location + 0x2000] = data;
-                }
-                /*The conditions above are for echo memory:
-                 [E000] - [FE00]
-                 ===============
-                 [C000] - [DE00]
-                 Changes in these ranges are copied to their counterparts
-                 */
-                else
-                    ram[location] = data;
-                return true;
+                ram[location] = data;
+                ram[location - 0x2000] = data;
             }
-            catch (Exception)
+            else if (location > 0xC000 && location < 0xDE00)
             {
-                return false;
+                ram[location] = data;
+                ram[location + 0x2000] = data;
             }
+            /*The conditions above are for echo memory:
+                [E000] - [FE00]
+                ===============
+                [C000] - [DE00]
+                Changes in these ranges are copied to their counterparts
+                */
+            else
+                ram[location] = data;
         }
-        public bool Write(byte[] data, int initLocation)
+        public void Write(byte[] data, int initLocation)
         {
-            try
+
+            for (int i=initLocation; i < data.Length + initLocation; i++)
             {
-                for (int i=0; i < data.Length; i++)
+                if (i > 0xE000 && i < 0xFE00)
                 {
-                    Write(data[i], initLocation + i);
+                    ram[i] = data[i - initLocation];
+                    ram[i - 0x2000] = data[i - initLocation];
                 }
-                return true;
-            }
-            catch (Exception)
-            {
-                return false;
+                else if (i > 0xC000 && i < 0xDE00)
+                {
+                    ram[i] = data[i - initLocation];
+                    ram[i + 0x2000] = data[i - initLocation];
+                }
+                else
+                    Write(data[i], initLocation + i);
             }
         }
         public byte Read(int location)
