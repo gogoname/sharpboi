@@ -8,7 +8,7 @@ namespace SharpBoi
 {
     class RAM
     {
-        private byte[] ram = new byte[65535];
+        private byte[] ram = new byte[65536];
         public void Write(byte data, int location)
         {
             if (location > 0xE000 && location < 0xFE00) 

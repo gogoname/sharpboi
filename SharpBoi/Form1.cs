@@ -23,7 +23,6 @@ namespace SharpBoi
         }
         private void openToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            StreamReader reader;
             using (OpenFileDialog dialog = new OpenFileDialog())
             {
                 dialog.InitialDirectory = Path.GetDirectoryName(Application.ExecutablePath);
