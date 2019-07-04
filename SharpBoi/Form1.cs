@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -19,7 +19,6 @@ namespace SharpBoi
         public Form1()
         {
             InitializeComponent();
-            this.Text = "GamEmu";
         }
 
         private void Form1_Load(object sender, EventArgs e)
