@@ -1,5 +1,9 @@
-# SharpBoi
-A Gameboy Emulator Written in C#
+# GamEmu
 
+A gameboy emulator written in C#
 
-This is both a school project and a project for fun.
+Instructions:
+
+Run the file in the releases page [here.](https://gitlab.com/HALAVLUV/sharpboi/releases)
+
+and click on File -> Open... and choose a Gameboy game
