@@ -1,0 +1,30 @@
+﻿<?xml version='1.0' encoding='utf-8'?>
+<SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)" GeneratedClassNamespace="SharpBoi" GeneratedClassName="Settings1">
+  <Profiles />
+  <Settings>
+    <Setting Name="DPAD_UP" Type="System.String" Scope="User">
+      <Value Profile="(Default)">Up</Value>
+    </Setting>
+    <Setting Name="DPAD_DOWN" Type="System.String" Scope="User">
+      <Value Profile="(Default)">Down</Value>
+    </Setting>
+    <Setting Name="DPAD_LEFT" Type="System.String" Scope="User">
+      <Value Profile="(Default)">Left</Value>
+    </Setting>
+    <Setting Name="DPAD_RIGHT" Type="System.String" Scope="User">
+      <Value Profile="(Default)">Right</Value>
+    </Setting>
+    <Setting Name="A" Type="System.String" Scope="User">
+      <Value Profile="(Default)">Z</Value>
+    </Setting>
+    <Setting Name="B" Type="System.String" Scope="User">
+      <Value Profile="(Default)">X</Value>
+    </Setting>
+    <Setting Name="START" Type="System.String" Scope="User">
+      <Value Profile="(Default)">Enter</Value>
+    </Setting>
+    <Setting Name="SELECT" Type="System.String" Scope="User">
+      <Value Profile="(Default)">Shift</Value>
+    </Setting>
+  </Settings>
+</SettingsFile>
